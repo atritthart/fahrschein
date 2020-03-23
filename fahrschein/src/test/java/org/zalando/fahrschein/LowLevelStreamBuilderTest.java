@@ -29,10 +29,10 @@ public class LowLevelStreamBuilderTest {
     private final StreamBuilder.LowLevelStreamBuilder lowLevelStreamBuilder = new StreamBuilders.LowLevelStreamBuilderImpl(URI.create("http://example.com"), mock(RequestFactory.class), cursorManager, new ObjectMapper(), "test");
 
     private void run(@Nullable String initialOffset, String oldestAvailableOffset, String newestAvailableOffset, @Nullable String expectedOffset) throws IOException {
-        when(cursorManager.getCursors("test")).thenReturn(initialOffset == null ? emptyList() : singletonList(new Cursor("0", initialOffset)));
+        when(cursorManager.getCursors(StreamKey.of("test", null))).thenReturn(initialOffset == null ? emptyList() : singletonList(new Cursor("0", initialOffset)));
         lowLevelStreamBuilder.skipUnavailableOffsets(singletonList(new Partition("0", oldestAvailableOffset, newestAvailableOffset)));
         if (expectedOffset != null) {
-            verify(cursorManager).onSuccess(eq("test"), expectedCursors(expectedOffset));
+            verify(cursorManager).onSuccess(eq(StreamKey.of("test", null)), expectedCursors(expectedOffset));
         } else {
             verify(cursorManager, never()).onSuccess(any(), any(Cursor.class));
             verify(cursorManager, never()).onSuccess(any(), anyList());

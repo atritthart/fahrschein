@@ -12,10 +12,10 @@ import java.util.List;
  */
 public interface CursorManager {
 
-    void onSuccess(String eventName, Cursor cursor) throws IOException;
-    void onSuccess(String eventName, List<Cursor> cursors) throws IOException;
+    void onSuccess(StreamKey streamKey, Cursor cursor) throws IOException;
+    void onSuccess(StreamKey streamKey, List<Cursor> cursors) throws IOException;
 
-    Collection<Cursor> getCursors(String eventName) throws IOException;
+    Collection<Cursor> getCursors(StreamKey streamKey) throws IOException;
 
     default void addSubscription(Subscription subscription) {
 

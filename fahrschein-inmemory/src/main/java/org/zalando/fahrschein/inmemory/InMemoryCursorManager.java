@@ -3,6 +3,7 @@ package org.zalando.fahrschein.inmemory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.fahrschein.CursorManager;
+import org.zalando.fahrschein.StreamKey;
 import org.zalando.fahrschein.domain.Cursor;
 
 import java.io.IOException;
@@ -15,26 +16,26 @@ public final class InMemoryCursorManager implements CursorManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(InMemoryCursorManager.class);
 
-    private final ConcurrentHashMap<String, ConcurrentHashMap<String, Cursor>> partitionsByEventName = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<StreamKey, ConcurrentHashMap<String, Cursor>> partitionsByEventName = new ConcurrentHashMap<>();
 
-    private ConcurrentHashMap<String, Cursor> cursorsByPartition(final String eventName) {
-        return partitionsByEventName.computeIfAbsent(eventName, key -> new ConcurrentHashMap<>());
+    private ConcurrentHashMap<String, Cursor> cursorsByPartition(final StreamKey streamKey) {
+        return partitionsByEventName.computeIfAbsent(streamKey, key -> new ConcurrentHashMap<>());
     }
 
     @Override
-    public void onSuccess(final String eventName, final Cursor cursor) {
-        cursorsByPartition(eventName).put(cursor.getPartition(), cursor);
+    public void onSuccess(final StreamKey streamKey, final Cursor cursor) {
+        cursorsByPartition(streamKey).put(cursor.getPartition(), cursor);
     }
 
     @Override
-    public void onSuccess(String eventName, List<Cursor> cursors) throws IOException {
+    public void onSuccess(StreamKey streamKey, List<Cursor> cursors) throws IOException {
         for (Cursor cursor : cursors) {
-            onSuccess(eventName, cursor);
+            onSuccess(streamKey, cursor);
         }
     }
 
     @Override
-    public Collection<Cursor> getCursors(final String eventName) {
-        return Collections.unmodifiableCollection(cursorsByPartition(eventName).values());
+    public Collection<Cursor> getCursors(final StreamKey streamKey) {
+        return Collections.unmodifiableCollection(cursorsByPartition(streamKey).values());
     }
 }

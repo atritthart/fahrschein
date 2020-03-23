@@ -173,7 +173,7 @@ class NakadiReader<T> implements IORunnable {
 
     @Nullable
     private String getCursorsHeader() throws IOException {
-        if (!subscription.isPresent()) {
+        if (subscription == null) {
             final Collection<Cursor> lockedCursors = getLockedCursors();
 
             if (!lockedCursors.isEmpty()) {
@@ -183,8 +183,12 @@ class NakadiReader<T> implements IORunnable {
         return null;
     }
 
+    private StreamKey getStreamKey(final String eventName) {
+        return StreamKey.of(eventName, subscription.map(Subscription::getId).orElse(null));
+    }
+
     private Collection<Cursor> getLockedCursors() throws IOException {
-        final Collection<Cursor> cursors = cursorManager.getCursors(eventNames.iterator().next());
+        final Collection<Cursor> cursors = cursorManager.getCursors(getStreamKey(eventNames.iterator().next()));
         if (lock.isPresent()) {
             final Map<String, String> offsets = cursors.stream().collect(toMap(Cursor::getPartition, Cursor::getOffset));
             final List<Partition> partitions = lock.get().getPartitions();
@@ -207,7 +211,7 @@ class NakadiReader<T> implements IORunnable {
             public void run() throws IOException {
                 try {
                     listener.accept(batch.getEvents());
-                    cursorManager.onSuccess(eventName, cursor);
+                    cursorManager.onSuccess(getStreamKey(eventName), cursor);
                 } catch (EventAlreadyProcessedException e) {
                     LOG.info("Events for [{}] partition [{}] at offset [{}] were already processed", eventName, cursor.getPartition(), cursor.getOffset());
                 } catch (Throwable throwable) {

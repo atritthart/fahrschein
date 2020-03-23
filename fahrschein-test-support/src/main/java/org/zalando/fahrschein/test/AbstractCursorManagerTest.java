@@ -3,6 +3,7 @@ package org.zalando.fahrschein.test;
 import org.junit.Test;
 import org.springframework.transaction.annotation.Transactional;
 import org.zalando.fahrschein.CursorManager;
+import org.zalando.fahrschein.StreamKey;
 import org.zalando.fahrschein.domain.Cursor;
 
 import java.io.IOException;
@@ -24,7 +25,7 @@ public abstract class AbstractCursorManagerTest {
 
     @Test
     public void shouldBeEmptyByDefault() throws IOException {
-        final Collection<Cursor> cursors = cursorManager().getCursors("test");
+        final Collection<Cursor> cursors = cursorManager().getCursors(StreamKey.of("test", null));
         assertNotNull(cursors);
         assertTrue(cursors.isEmpty());
     }
@@ -32,9 +33,9 @@ public abstract class AbstractCursorManagerTest {
 
     @Test
     public void shouldCreateCursorOnSuccess() throws IOException {
-        cursorManager().onSuccess("test", new Cursor("0", "123"));
+        cursorManager().onSuccess(StreamKey.of("test", null), new Cursor("0", "123"));
 
-        final Collection<Cursor> cursors = cursorManager().getCursors("test");
+        final Collection<Cursor> cursors = cursorManager().getCursors(StreamKey.of("test", null));
         assertNotNull(cursors);
         assertEquals(1, cursors.size());
 
@@ -45,10 +46,10 @@ public abstract class AbstractCursorManagerTest {
 
     @Test
     public void shouldUpdateCursorOnSuccess() throws IOException {
-        cursorManager().onSuccess("test", new Cursor("0", "123"));
+        cursorManager().onSuccess(StreamKey.of("test", null), new Cursor("0", "123"));
 
         {
-            final Collection<Cursor> cursors = cursorManager().getCursors("test");
+            final Collection<Cursor> cursors = cursorManager().getCursors(StreamKey.of("test", null));
             assertNotNull(cursors);
             assertEquals(1, cursors.size());
 
@@ -57,9 +58,9 @@ public abstract class AbstractCursorManagerTest {
             assertEquals("123", cursor.getOffset());
         }
 
-        cursorManager().onSuccess("test", new Cursor("0", "124"));
+        cursorManager().onSuccess(StreamKey.of("test", null), new Cursor("0", "124"));
         {
-            final Collection<Cursor> cursors = cursorManager().getCursors("test");
+            final Collection<Cursor> cursors = cursorManager().getCursors(StreamKey.of("test", null));
             assertNotNull(cursors);
             assertEquals(1, cursors.size());
 
@@ -71,10 +72,10 @@ public abstract class AbstractCursorManagerTest {
 
     @Test
     public void shouldCreateCursorsForMultiplePartitions() throws IOException {
-        cursorManager().onSuccess("test", new Cursor("0", "12"));
-        cursorManager().onSuccess("test", new Cursor("1", "13"));
+        cursorManager().onSuccess(StreamKey.of("test", null), new Cursor("0", "12"));
+        cursorManager().onSuccess(StreamKey.of("test", null), new Cursor("1", "13"));
 
-        final List<Cursor> cursors = new ArrayList<>(cursorManager().getCursors("test"));
+        final List<Cursor> cursors = new ArrayList<>(cursorManager().getCursors(StreamKey.of("test", null)));
         Collections.sort(cursors, Comparator.comparing(Cursor::getPartition));
 
         assertNotNull(cursors);

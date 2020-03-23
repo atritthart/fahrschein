@@ -17,6 +17,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class ManagedCursorManagerTest {
     private MockServer server;
@@ -42,7 +43,7 @@ public class ManagedCursorManagerTest {
         cursorManager.addSubscription(subscription);
         cursorManager.addStreamId(subscription, "stream-id");
 
-        cursorManager.onSuccess("foo", new Cursor("0", "10", "foo", "token"));
+        cursorManager.onSuccess(StreamKey.of("foo", "1234"), new Cursor("0", "10", "foo", "token"));
 
         server.verify();
     }
@@ -56,7 +57,7 @@ public class ManagedCursorManagerTest {
         final Subscription subscription = new Subscription("1234", "nakadi-client-test", Collections.singleton("foo"), "bar", OffsetDateTime.now(), null);
         cursorManager.addSubscription(subscription);
 
-        final Collection<Cursor> cursors = cursorManager.getCursors("foo");
+        final Collection<Cursor> cursors = cursorManager.getCursors(StreamKey.of("foo", "1234"));
         assertThat(cursors, hasSize(2));
         final Iterator<Cursor> it = cursors.iterator();
         {

@@ -418,13 +418,17 @@ public class NakadiReaderTest {
             }
 
             {
-                final ArgumentCaptor<Cursor> argumentCaptor = ArgumentCaptor.forClass(Cursor.class);
+                final ArgumentCaptor<Cursor> argumentCaptorCursor = ArgumentCaptor.forClass(Cursor.class);
+                final ArgumentCaptor<StreamKey> argumentCaptorStreamKey = ArgumentCaptor.forClass(StreamKey.class);
 
-                verify(cursorManager).onSuccess(ArgumentMatchers.eq(EVENT_NAME), argumentCaptor.capture());
+                verify(cursorManager).onSuccess(argumentCaptorStreamKey.capture(), argumentCaptorCursor.capture());
 
-                final Cursor cursor = argumentCaptor.getValue();
+                final Cursor cursor = argumentCaptorCursor.getValue();
                 assertEquals("123", cursor.getPartition());
                 assertEquals("456", cursor.getOffset());
+
+                final StreamKey streamKey = argumentCaptorStreamKey.getValue();
+                assertEquals(EVENT_NAME, streamKey.getEventName());
             }
         }
     }
@@ -587,7 +591,7 @@ public class NakadiReaderTest {
 
         final NoBackoffStrategy backoffStrategy = new NoBackoffStrategy();
 
-        when(cursorManager.getCursors(EVENT_NAME)).thenReturn(asList(new Cursor("0", "0"), new Cursor("1", "10"), new Cursor("2", "20"), new Cursor("3", "30")));
+        when(cursorManager.getCursors(StreamKey.of(EVENT_NAME, null))).thenReturn(asList(new Cursor("0", "0"), new Cursor("1", "10"), new Cursor("2", "20"), new Cursor("3", "30")));
 
         final Lock lock = new Lock(EVENT_NAME, "test", asList(new Partition("0", "0", "100"), new Partition("1", "0", "100")));
         final NakadiReader<SomeEvent> nakadiReader = new NakadiReader<>(uri, RequestFactory, backoffStrategy, cursorManager, objectMapper, Collections.singleton(EVENT_NAME), Optional.empty(), Optional.of(lock), SomeEvent.class, listener);

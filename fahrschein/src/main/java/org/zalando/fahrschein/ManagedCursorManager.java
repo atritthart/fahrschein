@@ -18,6 +18,7 @@ import java.net.URI;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.zalando.fahrschein.NakadiClientBuilder.wrapClientHttpRequestFactory;
@@ -70,7 +71,8 @@ public class ManagedCursorManager implements CursorManager {
     private final URI baseUri;
     private final RequestFactory clientHttpRequestFactory;
     private final ObjectMapper objectMapper;
-    private final Map<String, SubscriptionStream> streams;
+
+    private final Map<StreamKey, SubscriptionStream> streams;
 
     public ManagedCursorManager(URI baseUri, RequestFactory clientHttpRequestFactory, AuthorizationProvider authorizationProvider) {
         this(baseUri, wrapClientHttpRequestFactory(clientHttpRequestFactory, authorizationProvider), true);
@@ -91,7 +93,7 @@ public class ManagedCursorManager implements CursorManager {
     public void addSubscription(Subscription subscription) {
         for(String eventName: subscription.getEventTypes()){
             LOG.debug("Adding subscription [{}] to event [{}]", subscription.getId(), eventName);
-            streams.put(eventName, new SubscriptionStream(eventName, subscription.getId()));
+            streams.put(StreamKey.of(eventName, subscription.getId()), new SubscriptionStream(eventName, subscription.getId()));
         }
     }
 
@@ -99,14 +101,14 @@ public class ManagedCursorManager implements CursorManager {
     public void addStreamId(Subscription subscription, String streamId) {
         for(String eventName: subscription.getEventTypes()) {
             LOG.debug("Adding stream id [{}] for subscription [{}] to event [{}]", streamId, subscription.getId(), eventName);
-            streams.get(eventName).setStreamId(streamId);
+            streams.get(StreamKey.of(eventName, subscription.getId())).setStreamId(streamId);
         }
     }
 
     @Override
-    public void onSuccess(String eventName, Cursor cursor) throws IOException {
+    public void onSuccess(StreamKey streamKey, Cursor cursor) throws IOException {
 
-        final SubscriptionStream stream = streams.get(eventName);
+        final SubscriptionStream stream = streams.get(streamKey);
         final String subscriptionId = stream.getSubscriptionId();
         final URI subscriptionUrl = baseUri.resolve(String.format("/subscriptions/%s/cursors", subscriptionId));
 
@@ -125,25 +127,25 @@ public class ManagedCursorManager implements CursorManager {
 
             final int status = response.getStatusCode();
             if (status == 204) {
-                LOG.debug("Successfully committed cursor for subscription [{}] to event [{}] in partition [{}] with offset [{}]", subscriptionId, eventName, cursor.getPartition(), cursor.getOffset());
+                LOG.debug("Successfully committed cursor for subscription [{}] to event [{}] in partition [{}] with offset [{}]", subscriptionId, streamKey.getEventName(), cursor.getPartition(), cursor.getOffset());
             } else if (status == 200) {
-                LOG.warn("Cursor for subscription [{}] to event [{}] in partition [{}] with offset [{}] was already committed", subscriptionId, eventName, cursor.getPartition(), cursor.getOffset());
+                LOG.warn("Cursor for subscription [{}] to event [{}] in partition [{}] with offset [{}] was already committed", subscriptionId, streamKey.getEventName(), cursor.getPartition(), cursor.getOffset());
             } else {
-                throw new IOException(String.format("Unexpected status code [%s] for subscription [%s] to event [%s]", status, subscriptionId, eventName));
+                throw new IOException(String.format("Unexpected status code [%s] for subscription [%s] to event [%s]", status, subscriptionId, streamKey.getEventName()));
             }
         }
     }
 
     @Override
-    public void onSuccess(String eventName, List<Cursor> cursors) throws IOException {
+    public void onSuccess(StreamKey streamKey, List<Cursor> cursors) throws IOException {
         for (Cursor cursor : cursors) {
-            onSuccess(eventName, cursor);
+            onSuccess(streamKey, cursor);
         }
     }
 
     @Override
-    public Collection<Cursor> getCursors(String eventName) throws IOException {
-        final SubscriptionStream stream = streams.get(eventName);
+    public Collection<Cursor> getCursors(StreamKey streamKey) throws IOException {
+        final SubscriptionStream stream = streams.get(streamKey);
         final URI subscriptionUrl = baseUri.resolve(String.format("/subscriptions/%s/cursors", stream.getSubscriptionId()));
 
         final Request request = clientHttpRequestFactory.createRequest(subscriptionUrl, "GET");

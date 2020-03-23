@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.zalando.fahrschein.CursorManager;
+import org.zalando.fahrschein.StreamKey;
 import org.zalando.fahrschein.domain.Cursor;
 
 import java.io.IOException;
@@ -24,20 +25,20 @@ public class RedisCursorManager implements CursorManager {
     }
 
     @Override
-    public void onSuccess(final String eventName, final Cursor cursor) throws IOException {
-        redisTemplate.opsForValue().set(cursorKey(eventName, cursor.getPartition()), cursor);
+    public void onSuccess(final StreamKey streamKey, final Cursor cursor) throws IOException {
+        redisTemplate.opsForValue().set(cursorKey(streamKey, cursor.getPartition()), cursor);
     }
 
     @Override
-    public void onSuccess(final String eventName, final List<Cursor> cursors) throws IOException {
+    public void onSuccess(final StreamKey streamKey, final List<Cursor> cursors) throws IOException {
         for (Cursor cursor : cursors) {
-            onSuccess(eventName, cursor);
+            onSuccess(streamKey, cursor);
         }
     }
 
     @Override
-    public Collection<Cursor> getCursors(final String eventName) throws IOException {
-        final RedisCursorKey pattern = new RedisCursorKey(consumerName, eventName, "*");
+    public Collection<Cursor> getCursors(final StreamKey streamKey) throws IOException {
+        final RedisCursorKey pattern = new RedisCursorKey(consumerName, streamKey, "*");
 
         final Set<RedisCursorKey> keys = redisTemplate.keys(pattern);
         final List<Cursor> cursors = new ArrayList<>(keys.size());
@@ -49,8 +50,8 @@ public class RedisCursorManager implements CursorManager {
         return cursors;
     }
 
-    private RedisCursorKey cursorKey(final String eventName, final String partition) {
-        return new RedisCursorKey(consumerName, eventName, partition);
+    private RedisCursorKey cursorKey(final StreamKey streamKey, final String partition) {
+        return new RedisCursorKey(consumerName, streamKey, partition);
     }
 
 }

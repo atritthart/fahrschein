@@ -210,12 +210,16 @@ class StreamBuilders {
             return new LowLevelStreamBuilderImpl(baseUri, requestFactory, cursorManager, objectMapper, backoffStrategy, streamParameters, batchHandler, metricsCollector, eventName, lock);
         }
 
+        private StreamKey getStreamKey() {
+            return StreamKey.of(eventName, getSubscription().map(Subscription::getId).orElse(null));
+        }
+
         /**
          * Initializes offsets to start streaming at the oldest available offset (BEGIN).
          */
         public LowLevelStreamBuilder readFromBegin(List<Partition> partitions) throws IOException {
             final List<Cursor> cursors = partitions.stream().map(p -> new Cursor(p.getPartition(), "BEGIN")).collect(toList());
-            cursorManager.onSuccess(eventName, cursors);
+            cursorManager.onSuccess(getStreamKey(), cursors);
             return this;
         }
 
@@ -225,7 +229,7 @@ class StreamBuilders {
          */
         public LowLevelStreamBuilder readFromNewestAvailableOffset(List<Partition> partitions) throws IOException {
             final List<Cursor> cursors = partitions.stream().map(p -> new Cursor(p.getPartition(), p.getNewestAvailableOffset())).collect(toList());
-            cursorManager.onSuccess(eventName, cursors);
+            cursorManager.onSuccess(getStreamKey(), cursors);
             return this;
         }
 
@@ -233,11 +237,12 @@ class StreamBuilders {
          * Updates cursors in case the currently stored offset is no longer available. Streaming will start at the oldest available offset (BEGIN) to minimize the amount of events skipped.
          */
         public LowLevelStreamBuilder skipUnavailableOffsets(List<Partition> partitions) throws IOException {
-            final Map<String, Cursor> cursorsByPartition = cursorManager.getCursors(eventName).stream().collect(toMap(Cursor::getPartition, identity()));
+
+            final Map<String, Cursor> cursorsByPartition = cursorManager.getCursors(getStreamKey()).stream().collect(toMap(Cursor::getPartition, identity()));
             final List<Cursor> cursors = partitions.stream().filter(p -> isNoLongerAvailable(cursorsByPartition, p)).map(p -> new Cursor(p.getPartition(), "BEGIN")).collect(toList());
 
             if (!cursors.isEmpty()) {
-                cursorManager.onSuccess(eventName, cursors);
+                cursorManager.onSuccess(getStreamKey(), cursors);
             }
 
             return this;

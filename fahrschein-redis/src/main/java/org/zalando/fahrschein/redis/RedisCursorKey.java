@@ -1,13 +1,15 @@
 package org.zalando.fahrschein.redis;
 
+import org.zalando.fahrschein.StreamKey;
+
 class RedisCursorKey {
     private final String consumerName;
-    private final String eventType;
+    private final StreamKey streamKey;
     private final String partition;
 
-    RedisCursorKey(final String consumerName, final String eventType, final String partition) {
+    RedisCursorKey(final String consumerName, final StreamKey streamKey, final String partition) {
         this.consumerName = consumerName;
-        this.eventType = eventType;
+        this.streamKey = streamKey;
         this.partition = partition;
     }
 
@@ -16,7 +18,11 @@ class RedisCursorKey {
     }
 
     public String getEventType() {
-        return eventType;
+        return streamKey.getEventName();
+    }
+
+    public StreamKey getStreamKey() {
+        return streamKey;
     }
 
     public String getPartition() {
@@ -27,7 +33,7 @@ class RedisCursorKey {
     public String toString() {
         return "RedisCursorKey{" +
                 "consumerName='" + consumerName + '\'' +
-                ", eventType='" + eventType + '\'' +
+                ", streamKey='" + streamKey + '\'' +
                 ", partition='" + partition + '\'' +
                 '}';
     }
@@ -40,7 +46,7 @@ class RedisCursorKey {
         final RedisCursorKey that = (RedisCursorKey) o;
 
         if (consumerName != null ? !consumerName.equals(that.consumerName) : that.consumerName != null) return false;
-        if (eventType != null ? !eventType.equals(that.eventType) : that.eventType != null) return false;
+        if (streamKey != null ? !streamKey.equals(that.streamKey) : that.streamKey != null) return false;
         return partition != null ? partition.equals(that.partition) : that.partition == null;
 
     }
@@ -48,7 +54,7 @@ class RedisCursorKey {
     @Override
     public int hashCode() {
         int result = consumerName != null ? consumerName.hashCode() : 0;
-        result = 31 * result + (eventType != null ? eventType.hashCode() : 0);
+        result = 31 * result + (streamKey != null ? streamKey.hashCode() : 0);
         result = 31 * result + (partition != null ? partition.hashCode() : 0);
         return result;
     }
